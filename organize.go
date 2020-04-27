@@ -7,6 +7,9 @@ import (
     "os"
     "strings"
     "flag"
+    "math/rand"
+    "strconv"
+
     "github.com/rwcarlsen/goexif/exif"
 )
 
@@ -34,12 +37,24 @@ func scanAndMove(uploadDir string, photoDir string){
     }
 }
 
+func checkForDuplicate(filePathRename string, extention string)(okayFilePathName string){
+    intendedFileName := filePathRename + extention
+    _, err := os.Stat(intendedFileName)
+    if os.IsNotExist(err) { // ideally this is a new file in case just do what we we're thinking
+        return intendedFileName
+    } else { // TODO this could cause an infinate loop in cases of +100 duplicates
+        psudoRand := strconv.Itoa(rand.Intn(99))
+        return checkForDuplicate(filePathRename + "_" + psudoRand , extention)
+    }
+}
+
 func moveAndRename(file os.FileInfo, sourceDir string, destDir string, ext string){
     currentLocation := sourceDir + file.Name()
     monthDay, year, hourMinutes := timeTaken(currentLocation)
     nextDest := destDir + year + "/" + monthDay
     mkdir(nextDest)
-    moveFile(currentLocation, nextDest + "/" + hourMinutes + ext)
+    newFilePathName := checkForDuplicate(nextDest + "/" + hourMinutes, ext)
+    moveFile(currentLocation, newFilePathName)
 }
 
 func isPhotoExtention(fileName string)(ext string){
