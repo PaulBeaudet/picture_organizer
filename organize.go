@@ -11,13 +11,13 @@ import (
 )
 
 func main(){
-    sourcePointer := flag.String("src", "$HOME/Downloads", "Source of pictures to sort")
+    home, _ := os.UserHomeDir() // get $HOME // Defaults will at least work in linux
+    sourcePointer := flag.String("src", home + "/Downloads/", "Source of pictures to sort")
     // Another primary example of src would be $HOME/Dropbox/Camera Uploads
-    destinationPointer := flag.String("dest", "$HOME/Pictures", "Destination of sorted pictures")
-    flag.Parse()
+    destinationPointer := flag.String("dest", home + "/Pictures/", "Destination of sorted pictures")
     // Or maybe a location like $HOME/Dropbox/pictures
-    fmt.Println("Source= " + *sourcePointer)
-    fmt.Println("destination= " + *destinationPointer)
+    flag.Parse() // get flags that were passed to app
+    fmt.Println("Source= " + *sourcePointer + " -> destination= " + *destinationPointer)
     scanAndMove(*sourcePointer, *destinationPointer)
 }
 
