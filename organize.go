@@ -30,8 +30,6 @@ func scanAndMove(uploadDir string, photoDir string){
     for _, file := range files {
         if ext := isPhotoExtention(file.Name()); ext != ""{
             moveAndRename(file, uploadDir, photoDir, ext)
-        } else {
-            fmt.Println(file.Name() + " is not a photo");
         }
     }
 }
@@ -65,18 +63,6 @@ func timeTaken(photoPath string)(mmdd string, yyyy string, hhmm string){
     monthDay := taken.Format("01_02_")
     year := taken.Format("2006")
     hourMinutes := taken.Format("15_04_05")
-    fmt.Println(photoPath + "\n ---> Taken on month and day: " + monthDay +
-        " in year " + year + " at exactly " + hourMinutes)
-    return monthDay, year, hourMinutes
-}
-
-func getCreation(pathToFile string)(mmdd string, yyyy string, hhmm string){
-    fileStat, err := os.Stat(pathToFile)
-    if err != nil {panic(err)}
-    timeObj := fileStat.ModTime()
-    monthDay := timeObj.Format("01_02_")
-    year := timeObj.Format("2006")
-    hourMinutes := timeObj.Format("15_04_05")
     return monthDay, year, hourMinutes
 }
 
@@ -89,16 +75,4 @@ func mkdir(dirToCreate string){
 
 func moveFile(oldPath string, newPath string){
     if err := os.Rename(oldPath, newPath); err != nil{panic(err)}
-}
-
-func ls(dir string){
-    f, err := os.Open(dir)
-    if err != nil {panic(err)}
-    files, error := f.Readdir(-1)
-    f.Close()
-    if error != nil {panic(error)}
-    fmt.Println("Contents of: " + dir);
-    for _, file := range files {
-        fmt.Println(file.Name())
-    }
 }
