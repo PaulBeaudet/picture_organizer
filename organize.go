@@ -1,17 +1,24 @@
+// upload.go ~ organizes camera uploads into main photo storage folder
+// Copyright 2020 Paul Beaudet ~ MIT License
 package main
 
 import (
     "fmt"
     "os"
     "strings"
-
+    "flag"
     "github.com/rwcarlsen/goexif/exif"
 )
 
 func main(){
-    const uploadDefaultFolder = "/home/wooper/Pictures/test/uploads/"
-    photosFolderDefualt := "/home/wooper/Pictures/test/personal_pictures/"
-    scanAndMove(uploadDefaultFolder, photosFolderDefualt)
+    sourcePointer := flag.String("src", "$HOME/Downloads", "Source of pictures to sort")
+    // Another primary example of src would be $HOME/Dropbox/Camera Uploads
+    destinationPointer := flag.String("dest", "$HOME/Pictures", "Destination of sorted pictures")
+    flag.Parse()
+    // Or maybe a location like $HOME/Dropbox/pictures
+    fmt.Println("Source= " + *sourcePointer)
+    fmt.Println("destination= " + *destinationPointer)
+    scanAndMove(*sourcePointer, *destinationPointer)
 }
 
 func scanAndMove(uploadDir string, photoDir string){
