@@ -5,6 +5,7 @@ package main
 import (
     "fmt"
     "os"
+    "io"
     "strings"
     "flag"
     "math/rand"
@@ -29,7 +30,7 @@ func scanAndMove(uploadDir string, photoDir string){
     if uErr != nil{panic(uErr)}
     files, error := uploads.Readdir(-1)
     uploads.Close()
-    if error != nil{panic(error)}
+    if error != nil {panic(error)}
     for _, file := range files {
         if ext := isPhotoExtention(file.Name()); ext != ""{
             moveAndRename(file, uploadDir, photoDir, ext)
@@ -37,24 +38,33 @@ func scanAndMove(uploadDir string, photoDir string){
     }
 }
 
-func checkForDuplicate(filePathRename string, extention string)(okayFilePathName string){
-    intendedFileName := filePathRename + extention
-    _, err := os.Stat(intendedFileName)
-    if os.IsNotExist(err) { // ideally this is a new file in case just do what we we're thinking
-        return intendedFileName
-    } else { // TODO this could cause an infinate loop in cases of +100 duplicates
-        psudoRand := strconv.Itoa(rand.Intn(99))
-        return checkForDuplicate(filePathRename + "_" + psudoRand , extention)
-    }
-}
-
 func moveAndRename(file os.FileInfo, sourceDir string, destDir string, ext string){
     currentLocation := sourceDir + file.Name()
     monthDay, year, hourMinutes := timeTaken(currentLocation)
-    nextDest := destDir + year + "/" + monthDay
-    mkdir(nextDest)
-    newFilePathName := checkForDuplicate(nextDest + "/" + hourMinutes, ext)
-    moveFile(currentLocation, newFilePathName)
+    hiarchy := year + "/" + monthDay + "/"
+    nextDest := destDir + hiarchy
+    mkdir(nextDest) // This should actually raise a panic if dest is non-existent
+    newName := checkForDuplicate(nextDest, hourMinutes, ext)
+    fail := copyFile(currentLocation, nextDest + newName)
+    if fail != nil {
+        fmt.Println(fail) // soft fail, if copy fails keep going
+    } else { // if copy is succesfull move into hiarchial directory with in source
+        copyDest := sourceDir + hiarchy
+        mkdir(copyDest)
+        moveFile(currentLocation, copyDest + newName);
+    } // This we at least have a backup | TODO: would be an issue if recursively
+} // ...searching folders with a previously rendered state in this format would
+//   ...cause unnecisary in place overwrites
+
+func checkForDuplicate(inPath string, fileName string, ext string)(okFileName string){
+    fullPath := inPath + fileName + ext
+    _, err := os.Stat(fullPath)
+    if os.IsNotExist(err) { // ideally this is a new file in case just do what we we're thinking
+        return fileName + ext
+    } else { // TODO this could cause an infinate loop in cases of +100 duplicates
+        psudoRand := strconv.Itoa(rand.Intn(99))
+        return checkForDuplicate(inPath, fileName + "_" + psudoRand , ext)
+    }
 }
 
 func isPhotoExtention(fileName string)(ext string){
@@ -63,7 +73,7 @@ func isPhotoExtention(fileName string)(ext string){
         return ".rw2"
     } else if strings.HasSuffix(fileName, ".jpg"){
         return ".jpg"
-    } else {
+    } else { // TODO: Add more formats that have exif info
         return ""
     }
 }
@@ -72,7 +82,7 @@ func timeTaken(photoPath string)(mmdd string, yyyy string, hhmm string){
     file, err := os.Open(photoPath)
     if err != nil {panic(err)}
     exifData, xerr := exif.Decode(file)
-    if xerr != nil {panic(xerr)}
+    if xerr != nil {panic(xerr)} // TODO: maybe just give unsupport file msg when no exif is found?
     taken, terr := exifData.DateTime()
     if terr != nil {panic(terr)}
     monthDay := taken.Format("01_02_")
@@ -86,6 +96,21 @@ func mkdir(dirToCreate string){
     if os.IsNotExist(error){
         if err := os.MkdirAll(dirToCreate, 0755); err != nil {panic(err)}
     }
+}
+
+func copyFile(src string, dest string)(error){
+    inputFile, err := os.Open(src)
+    if err != nil {return fmt.Errorf("Couldn't open source file: %s", err)}
+    outputFile, err := os.Create(dest)
+    if err != nil {
+        inputFile.Close()
+        return fmt.Errorf("Couldn't open dest file: %s", err)
+    }
+    defer outputFile.Close() // do this when function exits
+    _, err = io.Copy(outputFile, inputFile)
+    inputFile.Close()
+    if err != nil {return fmt.Errorf("Writing to output file failed: %s", err)}
+    return nil
 }
 
 func moveFile(oldPath string, newPath string){
