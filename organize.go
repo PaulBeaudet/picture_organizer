@@ -21,13 +21,13 @@ func main(){
     sourcePointer := flag.String("src", home + "/Downloads/", "Source of pictures to sort")
     // Another primary example of src would be $HOME/Dropbox/Camera Uploads
     destinationPointer := flag.String("dest", home + "/Pictures/", "Destination of sorted pictures")
-    // Or maybe a location like $HOME/Dropbox/pictures
+    safemode := flag.Bool("safemode", true, "Keeps a copy of sorted photos in source directory")
     flag.Parse() // get flags that were passed to app
-    fmt.Println("Source= " + *sourcePointer + " -> destination= " + *destinationPointer)
-    scanAndMove(*sourcePointer, *destinationPointer)
+    fmt.Println("Source= " + *sourcePointer + " -> destination= " + *destinationPointer + " Safemode:", *safemode)
+    scanAndMove(*sourcePointer, *destinationPointer, *safemode)
 }
 
-func scanAndMove(src string, dest string){
+func scanAndMove(src string, dest string, safemode bool){
     uploads, uErr := os.Open(src)
     if uErr != nil{panic(uErr)}
     files, error := uploads.Readdir(-1)
@@ -43,12 +43,12 @@ func scanAndMove(src string, dest string){
             nextDest := dest + hiarchy
             mkdir(nextDest)
             newName := getValidName(nextDest, taken.Format("15_04_05"), fileName)
-            // fmt.Println("noop write -> " + nextDest + newName)
             copyFile(currentLocation, nextDest + newName)
-            duplicateDest := src + hiarchy
-            mkdir(duplicateDest) //issue if searching folders w/ previously state in same format
-            // fmt.Println("noop copy -> " + duplicateDest + newName)
-            moveFile(currentLocation, duplicateDest + newName);
+            if safemode {
+                duplicateDest := src + hiarchy
+                mkdir(duplicateDest) //issue if searching folders w/ previously state in same format
+                moveFile(currentLocation, duplicateDest + newName);
+            } else { rm(currentLocation) } // otherwise remove original
         } // otherwise this is not a photo timeTakenIfPhoto logs out
     }
 }
@@ -105,4 +105,8 @@ func copyFile(src string, dest string){
 
 func moveFile(oldPath string, newPath string){
     if err := os.Rename(oldPath, newPath); err != nil{panic(err)}
+}
+
+func rm(path string){
+    if err := os.Remove(path); err != nil {fmt.Println("Could not remove " + path)}
 }
