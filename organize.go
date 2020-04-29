@@ -10,6 +10,8 @@ import (
     "flag"
     "math/rand"
     "strconv"
+    "time"
+    "path/filepath"
 
     "github.com/rwcarlsen/goexif/exif"
 )
@@ -25,70 +27,59 @@ func main(){
     scanAndMove(*sourcePointer, *destinationPointer)
 }
 
-func scanAndMove(uploadDir string, photoDir string){
-    uploads, uErr := os.Open(uploadDir)
+func scanAndMove(src string, dest string){
+    uploads, uErr := os.Open(src)
     if uErr != nil{panic(uErr)}
     files, error := uploads.Readdir(-1)
     uploads.Close()
     if error != nil {panic(error)}
     for _, file := range files {
-        if ext := isPhotoExtention(file.Name()); ext != ""{
-            moveAndRename(file, uploadDir, photoDir, ext)
-        }
+        fileName := file.Name()
+        currentLocation := src + fileName
+        taken, isPhoto := timeTakenIfPhoto(currentLocation)
+        if isPhoto { // given we are getting a time back from photo w/exif
+            fileName = strings.ToLower(fileName) // convert to lower case
+            hiarchy := taken.Format("2006") + "/" + taken.Format("01_02_") + "/"
+            nextDest := dest + hiarchy
+            mkdir(nextDest)
+            newName := getValidName(nextDest, taken.Format("15_04_05"), fileName)
+            // fmt.Println("noop write -> " + nextDest + newName)
+            copyFile(currentLocation, nextDest + newName)
+            duplicateDest := src + hiarchy
+            mkdir(duplicateDest) //issue if searching folders w/ previously state in same format
+            // fmt.Println("noop copy -> " + duplicateDest + newName)
+            moveFile(currentLocation, duplicateDest + newName);
+        } // otherwise this is not a photo timeTakenIfPhoto logs out
     }
 }
 
-func moveAndRename(file os.FileInfo, sourceDir string, destDir string, ext string){
-    currentLocation := sourceDir + file.Name()
-    monthDay, year, hourMinutes := timeTaken(currentLocation)
-    hiarchy := year + "/" + monthDay + "/"
-    nextDest := destDir + hiarchy
-    mkdir(nextDest) // This should actually raise a panic if dest is non-existent
-    newName := checkForDuplicate(nextDest, hourMinutes, ext)
-    fail := copyFile(currentLocation, nextDest + newName)
-    if fail != nil {
-        fmt.Println(fail) // soft fail, if copy fails keep going
-    } else { // if copy is succesfull move into hiarchial directory with in source
-        copyDest := sourceDir + hiarchy
-        mkdir(copyDest)
-        moveFile(currentLocation, copyDest + newName);
-    } // This we at least have a backup | TODO: would be an issue if recursively
-} // ...searching folders with a previously rendered state in this format would
-//   ...cause unnecisary in place overwrites
-
-func checkForDuplicate(inPath string, fileName string, ext string)(okFileName string){
-    fullPath := inPath + fileName + ext
+func getValidName(inPath string, newName string, orgName string)(string){
+    ext := filepath.Ext(orgName); // get current extention name, e.g. .jpg or .rw2
+    // if ext == "" { ext = ".jpg" } // fix past mistake of not including extention
+    fullPath := inPath + newName + ext
     _, err := os.Stat(fullPath)
     if os.IsNotExist(err) { // ideally this is a new file in case just do what we we're thinking
-        return fileName + ext
+        return newName + ext
     } else { // TODO this could cause an infinate loop in cases of +100 duplicates
         psudoRand := strconv.Itoa(rand.Intn(99))
-        return checkForDuplicate(inPath, fileName + "_" + psudoRand , ext)
+        return getValidName(inPath, newName + "_" + psudoRand , ext)
     }
 }
 
-func isPhotoExtention(fileName string)(ext string){
-    fileName = strings.ToLower(fileName)
-    if strings.HasSuffix(fileName, ".rw2"){
-        return ".rw2"
-    } else if strings.HasSuffix(fileName, ".jpg"){
-        return ".jpg"
-    } else { // TODO: Add more formats that have exif info
-        return ""
-    }
-}
-
-func timeTaken(photoPath string)(mmdd string, yyyy string, hhmm string){
+func timeTakenIfPhoto(photoPath string)(time.Time, bool){
     file, err := os.Open(photoPath)
     if err != nil {panic(err)}
-    exifData, xerr := exif.Decode(file)
-    if xerr != nil {panic(xerr)} // TODO: maybe just give unsupport file msg when no exif is found?
-    taken, terr := exifData.DateTime()
-    if terr != nil {panic(terr)}
-    monthDay := taken.Format("01_02_")
-    year := taken.Format("2006")
-    hourMinutes := taken.Format("15_04_05")
-    return monthDay, year, hourMinutes
+    exifData, exifErr := exif.Decode(file)
+    if exifErr != nil {
+        fmt.Println(photoPath + ": is not a photo with exif data")
+        return time.Time{}, false
+    }
+    taken, dateTimeErr := exifData.DateTime()
+    if dateTimeErr != nil {
+        fmt.Println(photoPath + ": could not get date and time")
+        return time.Time{}, false
+    }
+    return taken, true
 }
 
 func mkdir(dirToCreate string){
@@ -98,19 +89,18 @@ func mkdir(dirToCreate string){
     }
 }
 
-func copyFile(src string, dest string)(error){
+func copyFile(src string, dest string){
     inputFile, err := os.Open(src)
-    if err != nil {return fmt.Errorf("Couldn't open source file: %s", err)}
+    if err != nil {fmt.Println("Couldn't open source file: %s", err)}
     outputFile, err := os.Create(dest)
     if err != nil {
         inputFile.Close()
-        return fmt.Errorf("Couldn't open dest file: %s", err)
+        fmt.Println("Couldn't open dest file: %s", err)
     }
     defer outputFile.Close() // do this when function exits
     _, err = io.Copy(outputFile, inputFile)
     inputFile.Close()
-    if err != nil {return fmt.Errorf("Writing to output file failed: %s", err)}
-    return nil
+    if err != nil {fmt.Println("Writing to output file failed: %s", err)}
 }
 
 func moveFile(oldPath string, newPath string){
