@@ -17,8 +17,9 @@ import (
 )
 
 func main(){
+    workingDir, _ := os.Getwd() // get the working directory
     home, _ := os.UserHomeDir() // get $HOME // Defaults will at least work in linux
-    sourcePointer := flag.String("src", home + "/Downloads/", "Source of pictures to sort")
+    sourcePointer := flag.String("src", workingDir + "/", "Source of pictures to sort")
     // Another primary example of src would be $HOME/Dropbox/Camera Uploads
     destinationPointer := flag.String("dest", home + "/Pictures/", "Destination of sorted pictures")
     safemode := flag.Bool("safemode", true, "Keeps a copy of sorted photos in source directory")
