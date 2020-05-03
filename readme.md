@@ -15,3 +15,9 @@ go run organize.go -src "/home/username/path/with/trailing/" -dest "/same/diff/f
 ```
 
 Trailing slash and exact path are important until someone fixes it to be more flexible
+
+In mint I'm able to use ./local_build.sh in order to make the binary command line accessible as "organize". Feel free to rename it whatever suits you, maybe I'll make that a passible option to the script. Likely need to 
+
+    source ~./profile
+    
+ To get the terminal to recongize the command, probably should just add that too. Not sure how much that makes sense to do every time though
