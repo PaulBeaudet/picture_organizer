@@ -92,16 +92,16 @@ func mkdir(dirToCreate string){
 
 func copyFile(src string, dest string){
     inputFile, err := os.Open(src)
-    if err != nil {fmt.Println("Couldn't open source file: %s", err)}
+    if err != nil {fmt.Println("Couldn't open source file: " + err.Error())}
     outputFile, err := os.Create(dest)
     if err != nil {
         inputFile.Close()
-        fmt.Println("Couldn't open dest file: %s", err)
+        fmt.Println("Couldn't open dest file: " + err.Error())
     }
     defer outputFile.Close() // do this when function exits
     _, err = io.Copy(outputFile, inputFile)
     inputFile.Close()
-    if err != nil {fmt.Println("Writing to output file failed: %s", err)}
+    if err != nil {fmt.Println("Writing to output file failed: " + err.Error())}
 }
 
 func moveFile(oldPath string, newPath string){
