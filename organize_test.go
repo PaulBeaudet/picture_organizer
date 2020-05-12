@@ -71,9 +71,10 @@ func TestScanAndMove(t *testing.T){ // Options on sorting behaviours expected
     testDir := workingDir + TEST_DIR
     dummyDir := testDir + "ignore_dir/"
     createSrcCopy(workingDir + TEST_JPGS, dummyDir)
-    scanAndMove(dummyDir, testDir, false)
+    eventName := "event"
+    scanAndMove(dummyDir, testDir, false, eventName)
     expectedParent := testDir + "2020/"
-    expectedFile := expectedParent + "04_04_/16_15_35.jpg"
+    expectedFile := expectedParent + "04_04_" + eventName + "/16_15_35.jpg"
     // This could be improved to check the three test files to make sure files are being iterated through
     _, err := os.Stat(expectedFile)
     if os.IsNotExist(err){ // Option: Chosen destination created & sorted to
