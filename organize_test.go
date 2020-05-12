@@ -8,6 +8,7 @@ import (
 const TEST_DIR = "/TestFiles/"
 const TEST_JPGS = TEST_DIR + "OriginSamples/"
 
+/* These are implementation details not behavious promised by the program
 func TestOsAbstractions(t *testing.T){
     // TEST for -> copyFile / mkdir / rm / moveFile # Happy Path
     workingDir, _ := os.Getwd()
@@ -63,9 +64,9 @@ func TestGetValidName(t *testing.T){
     if newName != "newName.jpg" {
         t.Errorf("failed to keep original name in absence of a conflict: " + newName)
     }
-}
+}*/
 
-func TestScanAndMove(t *testing.T){
+func TestScanAndMove(t *testing.T){ // Options on sorting behaviours expected
     workingDir, _ := os.Getwd()
     testDir := workingDir + TEST_DIR
     dummyDir := testDir + "ignore_dir/"
@@ -75,34 +76,41 @@ func TestScanAndMove(t *testing.T){
     expectedFile := expectedParent + "04_04_/16_15_35.jpg"
     // This could be improved to check the three test files to make sure files are being iterated through
     _, err := os.Stat(expectedFile)
-    if os.IsNotExist(err){ // This also accounts for the file being renamed
+    if os.IsNotExist(err){ // Option: Chosen destination created & sorted to
         t.Errorf("Failed to copy first sample photo")
     }
     _, err = os.Stat(dummyDir + "2020")
-    if os.IsExist(err){
+    if os.IsExist(err){    // Option: False safemode
         t.Errorf("No in source directory copy expeceted in false safemode")
     }
-    cleanFolderMess(expectedParent) // Housekeeping: For next test w/out safemode
-    // TEST 2 Does safe mode work as expected
-    createSrcCopy(workingDir + TEST_JPGS, dummyDir)
-    scanAndMove(dummyDir, testDir, true)
-    _, err = os.Stat(dummyDir + "2020")
-    if os.IsNotExist(err){
-        t.Errorf("Source directory copy expeceted in true safemode")
-    }
-    expectedFile = dummyDir + "/2020/04_04_/16_15_35.jpg"
-    _, err = os.Stat(expectedFile)
-    if os.IsNotExist(err){
-        t.Errorf("Failed to move working directory copy")
-    }
-    // End of test Housekeeping
+    // End of test: Housekeeping below
     cleanFolderMess(expectedParent)
     cleanFolderMess(dummyDir)
 }
 // TODO create a test with copy image that has same timestamp
 
-func TestMain(t *testing.T){
-
+func TestMain(t *testing.T){    // expected default behaviour without passed flags
+    workingDir, _ := os.Getwd() // get the working directory
+    home, _ := os.UserHomeDir() // get $HOME // Defaults will at least work in linux
+    dummyDir := workingDir + TEST_DIR + "ignore_dir/"
+    expectedParent := home + "/Pictures/2020/"
+    expectedFile := expectedParent + "04_04_/16_15_35.jpg"
+    createSrcCopy(workingDir + TEST_JPGS, dummyDir)
+    os.Chdir(dummyDir)          // point app's working director at dummy one
+    main()                      // TODO: How would one test flag options?
+    _, err := os.Stat(expectedFile)
+    if os.IsNotExist(err){ // Default: Sort photos to ~/Pictures
+        t.Errorf("Failed to copy first sample photo")
+    }
+    expectedFile = dummyDir + "/2020/04_04_/16_15_35.jpg"
+    _, err = os.Stat(expectedFile)
+    if os.IsNotExist(err){ // Default: Safemode = In working dirctory copy of photos
+        t.Errorf("Failed to move working directory copy")
+    }
+    // End of test: Housekeeping below
+    cleanFolderMess(expectedParent)
+    cleanFolderMess(dummyDir)
+    os.Chdir(workingDir)
 }
 
 // ----- Test helpler functions ------
@@ -119,7 +127,7 @@ func createSrcCopy(src string, dest string){
     }
 }
 
-func cleanFolderMess(messDir string){
+func cleanFolderMess(messDir string){ // pay attention not to point this at source origin working directory
     err := os.RemoveAll(messDir)
     if err != nil {panic("failed to clean up folder mess")}
 }
