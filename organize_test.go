@@ -8,64 +8,6 @@ import (
 const TEST_DIR = "/TestFiles/"
 const TEST_JPGS = TEST_DIR + "OriginSamples/"
 
-/* These are implementation details not behavious promised by the program
-func TestOsAbstractions(t *testing.T){
-    // TEST for -> copyFile / mkdir / rm / moveFile # Happy Path
-    workingDir, _ := os.Getwd()
-    src := workingDir + TEST_JPGS
-    dest := workingDir + TEST_DIR
-    copiedFile := dest + "ignore_copied.jpg"
-    copyFile(src + "test0.jpg", copiedFile) // TEST copyFile
-    _, err := os.Stat(copiedFile)
-    if os.IsNotExist(err){
-        t.Errorf("Failed to copy or rename file")
-    }
-    dirToCreate := workingDir + "/TestFiles/ignore_parent/ignore_child"
-    mkdir(dirToCreate) // TEST mkdir
-    _, err = os.Stat(dirToCreate)
-    if os.IsNotExist(err){
-        t.Errorf("failed to create parent and child directory")
-    }
-    movedFile := dirToCreate + "/ignore_rename.jpg"
-    moveFile(copiedFile, movedFile) // TEST moveFile
-    _, err = os.Stat(movedFile)
-    if os.IsNotExist(err){
-        t.Errorf("Failed to move or rename file")
-    }
-    rm(movedFile) // TEST rm
-    _, err = os.Stat(movedFile)
-    if os.IsExist(err){
-        t.Errorf("Failed to remove file");
-    }
-    // --- Housekeeping ----
-    cleanFolderMess(workingDir + "/TestFiles/ignore_parent")
-}
-
-func TestTimeTakenIfPhoto(t *testing.T){ // timeTakenIfPhoto -> Happy Path
-    workingDir, _ := os.Getwd()
-    taken, isPhoto := timeTakenIfPhoto(workingDir + TEST_JPGS + "test0.jpg")
-    if isPhoto == false {
-        t.Errorf("Returned as happy sample as not a photo with exif")
-    }
-    fmtString := "Mon Jan 2 15:04:05 -0700 MST 2006"
-    if taken.Format(fmtString) != "Mon May 4 14:36:05 -0400 EDT 2020" {
-        t.Errorf("Returned incorrect timestamp for happy sample")
-    }
-}
-
-func TestGetValidName(t *testing.T){
-    workingDir, _ := os.Getwd()
-    jpgSrc := workingDir + TEST_JPGS
-    newName := getValidName(jpgSrc, "test0", jpgSrc + "test0.jpg") // insert rand number for existing file case
-    if newName == "test0.jpg" {
-        t.Errorf("failed to create a unique name for this file");
-    }
-    newName = getValidName(jpgSrc, "newName", jpgSrc + "test0.jpg") // retains orginal name case
-    if newName != "newName.jpg" {
-        t.Errorf("failed to keep original name in absence of a conflict: " + newName)
-    }
-}*/
-
 func TestScanAndMove(t *testing.T){ // Options on sorting behaviours expected
     workingDir, _ := os.Getwd()
     testDir := workingDir + TEST_DIR
