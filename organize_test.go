@@ -3,6 +3,8 @@ package main
 import (
     "testing"
     "os" // Assumptions: Integrity of os.Stat & os.Getwd
+    "time"
+    "strconv"
 )
 
 const TEST_DIR = "/TestFiles/"
@@ -13,10 +15,11 @@ func TestScanAndMove(t *testing.T){ // Options on sorting behaviours expected
     testDir := workingDir + TEST_DIR
     dummyDir := testDir + "ignore_dir/"
     createSrcCopy(workingDir + TEST_JPGS, dummyDir)
+    daysSinceYoungestPic := getYoungestPic(t, dummyDir)
     eventName := "event"
-    scanAndMove(dummyDir, testDir, false, eventName)
+    scanAndMove(dummyDir, testDir, false, eventName, daysSinceYoungestPic)
     expectedParent := testDir + "2020/"
-    expectedFile := expectedParent + "04_04_" + eventName + "/16_15_35.jpg"
+    expectedFile := expectedParent + "05_04_" + eventName + "/14_36_05.jpg" // This is youngest photo
     // This could be improved to check the three test files to make sure files are being iterated through
     _, err := os.Stat(expectedFile)
     if os.IsNotExist(err){ // Option: Chosen destination created & sorted to
@@ -25,6 +28,10 @@ func TestScanAndMove(t *testing.T){ // Options on sorting behaviours expected
     _, err = os.Stat(dummyDir + "2020")
     if os.IsExist(err){    // Option: False safemode
         t.Errorf("No in source directory copy expeceted in false safemode")
+    }
+    numberOfDirs := amountOfFilesInDir(t, expectedParent)
+    if numberOfDirs != 1 { // Option: Asked for youngest files
+        t.Errorf("Should only be one event directory; asked for youngest sample files. Got:" + strconv.Itoa(numberOfDirs))
     }
     // End of test: Housekeeping below
     cleanFolderMess(expectedParent)
@@ -57,6 +64,44 @@ func TestMain(t *testing.T){    // expected default behaviour without passed fla
 }
 
 // ----- Test helpler functions ------
+func amountOfFilesInDir(t *testing.T, srcDir string)(int){
+    t.Helper()
+    _, err := os.Stat(srcDir)
+    if os.IsNotExist(err){return 0}
+    dirContents, err := os.Open(srcDir)
+    if err != nil{panic(err)}
+    files, err := dirContents.Readdir(-1)
+    dirContents.Close()
+    if err != nil {panic(err)}
+    return len(files)
+}
+
+func getYoungestPic(t *testing.T, srcDir string)(int){
+    t.Helper()
+    dirContents, err := os.Open(srcDir)
+    if err != nil{panic(err)}
+    files, err := dirContents.Readdir(-1)
+    dirContents.Close()
+    if err != nil {panic(err)}
+    youngest := 0
+    firstPhotoIndex := 0;
+    now := time.Now()
+    for index, file := range files {
+        fileName := file.Name()
+        taken, isPhoto := timeTakenIfPhoto(srcDir + fileName)
+        if !isPhoto{
+            if index==0 {firstPhotoIndex = firstPhotoIndex + 1}
+            continue
+        }
+        diff := now.Sub(taken)
+        daysSinceTaken := int(diff.Hours()/24)
+        if firstPhotoIndex == index || daysSinceTaken < youngest{
+            youngest = daysSinceTaken
+        }
+    }
+    return youngest
+}
+
 func createSrcCopy(src string, dest string){
     mkdir(dest)
     dir, err := os.Open(src)

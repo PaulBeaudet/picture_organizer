@@ -23,33 +23,38 @@ func main(){
     destinationPointer := flag.String("dest", home + "/Pictures/", "Destination of sorted pictures")
     safemode := flag.Bool("safemode", true, "Keeps a copy of sorted photos in source directory")
     eventName := flag.String("name", "", "Adds an event name in folder hiarchy")
+    daysIntoPast := flag.Int("retro", 0, "How many days into past to retrospectively sort photos")
     flag.Parse() // get flags that were passed to app
-    scanAndMove(*sourcePointer, *destinationPointer, *safemode, *eventName)
+    // fmt.Println("src:", *sourcePointer, " dest:",*destinationPointer," sm:", *safemode, " evn:", *eventName, " retro:", *daysIntoPast)
+    scanAndMove(*sourcePointer, *destinationPointer, *safemode, *eventName, *daysIntoPast)
 }
 
-func scanAndMove(src string, dest string, safemode bool, eventName string){
-    uploads, uErr := os.Open(src)
-    if uErr != nil{panic(uErr)}
-    files, error := uploads.Readdir(-1)
+func scanAndMove(src string, dest string, safemode bool, eventName string, daysIntoPast int){
+    // TODO maybe stat source and dest to make sure they exist
+    uploads, err := os.Open(src)
+    if err != nil{panic(err)}
+    files, err := uploads.Readdir(-1)
     uploads.Close()
-    if error != nil {panic(error)}
+    if err != nil {panic(err)}
+    now := time.Now()
     for _, file := range files {
         fileName := file.Name()
         currentLocation := src + fileName
         taken, isPhoto := timeTakenIfPhoto(currentLocation)
-        if isPhoto { // given we are getting a photo back w/exif info
-            fileName = strings.ToLower(fileName) // convert to lower case
-            hiarchy := taken.Format("2006") + "/" + taken.Format("01_02_") + eventName + "/"
-            nextDest := dest + hiarchy
-            mkdir(nextDest)
-            newName := getValidName(nextDest, taken.Format("15_04_05"), fileName)
-            copyFile(currentLocation, nextDest + newName)
-            if safemode {
-                duplicateDest := src + hiarchy
-                mkdir(duplicateDest) //issue if searching folders w/ previously state in same format
-                moveFile(currentLocation, duplicateDest + newName);
-            } else { rm(currentLocation) } // otherwise remove original
-        } // otherwise this is not a photo timeTakenIfPhoto logs out
+        if !isPhoto{continue} // skip files without exif
+        daysSinceTaken := int(now.Sub(taken).Hours()/24)
+        if daysIntoPast > 0 && daysSinceTaken > daysIntoPast{continue}
+        fileName = strings.ToLower(fileName) // convert to lower case
+        hiarchy := taken.Format("2006") + "/" + taken.Format("01_02_") + eventName + "/"
+        nextDest := dest + hiarchy
+        mkdir(nextDest)
+        newName := getValidName(nextDest, taken.Format("15_04_05"), fileName)
+        copyFile(currentLocation, nextDest + newName)
+        if safemode {
+            duplicateDest := src + hiarchy
+            mkdir(duplicateDest) //issue if searching folders w/ previously state in same format
+            moveFile(currentLocation, duplicateDest + newName);
+        } else { rm(currentLocation) } // otherwise remove original
     }
 }
 
@@ -68,17 +73,11 @@ func getValidName(inPath string, newName string, orgName string)(string){
 
 func timeTakenIfPhoto(photoPath string)(time.Time, bool){
     file, err := os.Open(photoPath)
-    if err != nil {panic(err)}
-    exifData, exifErr := exif.Decode(file)
-    if exifErr != nil {
-        fmt.Println(photoPath + ": is not a photo with exif data")
-        return time.Time{}, false
-    }
-    taken, dateTimeErr := exifData.DateTime()
-    if dateTimeErr != nil {
-        fmt.Println(photoPath + ": could not get date and time")
-        return time.Time{}, false
-    }
+    if err != nil {return time.Time{}, false}
+    exifData, err := exif.Decode(file)
+    if err != nil {return time.Time{}, false}
+    taken, err := exifData.DateTime()
+    if err != nil {return time.Time{}, false}
     return taken, true
 }
 
