@@ -20,15 +20,14 @@ func main(){
     workingDir, _ := os.Getwd() // get the working directory
     home, _ := os.UserHomeDir() // get $HOME // Defaults will at least work in linux
     sourcePointer := flag.String("src", workingDir + "/", "Source of pictures to sort")
-    // Another primary example of src would be $HOME/Dropbox/Camera Uploads
     destinationPointer := flag.String("dest", home + "/Pictures/", "Destination of sorted pictures")
     safemode := flag.Bool("safemode", true, "Keeps a copy of sorted photos in source directory")
+    eventName := flag.String("name", "", "Adds an event name in folder hiarchy")
     flag.Parse() // get flags that were passed to app
-    fmt.Println("Source= " + *sourcePointer + " -> destination= " + *destinationPointer + " Safemode:", *safemode)
-    scanAndMove(*sourcePointer, *destinationPointer, *safemode)
+    scanAndMove(*sourcePointer, *destinationPointer, *safemode, *eventName)
 }
 
-func scanAndMove(src string, dest string, safemode bool){
+func scanAndMove(src string, dest string, safemode bool, eventName string){
     uploads, uErr := os.Open(src)
     if uErr != nil{panic(uErr)}
     files, error := uploads.Readdir(-1)
@@ -38,9 +37,9 @@ func scanAndMove(src string, dest string, safemode bool){
         fileName := file.Name()
         currentLocation := src + fileName
         taken, isPhoto := timeTakenIfPhoto(currentLocation)
-        if isPhoto { // given we are getting a time back from photo w/exif
+        if isPhoto { // given we are getting a photo back w/exif info
             fileName = strings.ToLower(fileName) // convert to lower case
-            hiarchy := taken.Format("2006") + "/" + taken.Format("01_02_") + "/"
+            hiarchy := taken.Format("2006") + "/" + taken.Format("01_02_") + eventName + "/"
             nextDest := dest + hiarchy
             mkdir(nextDest)
             newName := getValidName(nextDest, taken.Format("15_04_05"), fileName)
