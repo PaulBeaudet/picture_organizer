@@ -3,17 +3,17 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "io"
-    "strings"
-    "flag"
-    "math/rand"
-    "strconv"
-    "time"
-    "path/filepath"
+	"flag"
+	"fmt"
+	"io"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
-    "github.com/rwcarlsen/goexif/exif"
+	"github.com/rwcarlsen/goexif/exif"
 )
 
 func main(){
@@ -21,15 +21,14 @@ func main(){
     home, _ := os.UserHomeDir() // get $HOME // Defaults will at least work in linux
     sourcePointer := flag.String("src", workingDir + "/", "Source of pictures to sort")
     destinationPointer := flag.String("dest", home + "/Pictures/", "Destination of sorted pictures")
-    safemode := flag.Bool("safemode", true, "Keeps a copy of sorted photos in source directory")
-    eventName := flag.String("name", "", "Adds an event name in folder hiarchy")
+    safe_mode := flag.Bool("safe_mode", true, "Keeps a copy of sorted photos in source directory")
+    eventName := flag.String("name", "", "Adds an event name in folder hierarchy")
     daysIntoPast := flag.Int("retro", 0, "How many days into past to retrospectively sort photos")
     flag.Parse() // get flags that were passed to app
-    // fmt.Println("src:", *sourcePointer, " dest:",*destinationPointer," sm:", *safemode, " evn:", *eventName, " retro:", *daysIntoPast)
-    scanAndMove(*sourcePointer, *destinationPointer, *safemode, *eventName, *daysIntoPast)
+    scanAndMove(*sourcePointer, *destinationPointer, *safe_mode, *eventName, *daysIntoPast)
 }
 
-func scanAndMove(src string, dest string, safemode bool, eventName string, daysIntoPast int){
+func scanAndMove(src string, dest string, safe_mode bool, eventName string, daysIntoPast int){
     // TODO maybe stat source and dest to make sure they exist
     uploads, err := os.Open(src)
     if err != nil{panic(err)}
@@ -41,17 +40,20 @@ func scanAndMove(src string, dest string, safemode bool, eventName string, daysI
         fileName := file.Name()
         currentLocation := src + fileName
         taken, isPhoto := timeTakenIfPhoto(currentLocation)
-        if !isPhoto{continue} // skip files without exif
+        if !isPhoto{
+            fmt.Println(fileName + " is not a photo")
+            continue
+        } // skip files without exif
         daysSinceTaken := int(now.Sub(taken).Hours()/24)
         if daysIntoPast > 0 && daysSinceTaken > daysIntoPast{continue}
         fileName = strings.ToLower(fileName) // convert to lower case
-        hiarchy := taken.Format("2006") + "/" + taken.Format("01_02_") + eventName + "/"
-        nextDest := dest + hiarchy
+        hierarchy := taken.Format("2006") + "/" + taken.Format("01_02_") + eventName + "/"
+        nextDest := dest + hierarchy
         mkdir(nextDest)
         newName := getValidName(nextDest, taken.Format("15_04_05"), fileName)
         copyFile(currentLocation, nextDest + newName)
-        if safemode {
-            duplicateDest := src + hiarchy
+        if safe_mode {
+            duplicateDest := src + hierarchy
             mkdir(duplicateDest) //issue if searching folders w/ previously state in same format
             moveFile(currentLocation, duplicateDest + newName);
         } else { rm(currentLocation) } // otherwise remove original
@@ -59,25 +61,34 @@ func scanAndMove(src string, dest string, safemode bool, eventName string, daysI
 }
 
 func getValidName(inPath string, newName string, orgName string)(string){
-    ext := filepath.Ext(orgName); // get current extention name, e.g. .jpg or .rw2
-    // if ext == "" { ext = ".jpg" } // fix past mistake of not including extention
+    ext := filepath.Ext(orgName); // get current extension name, e.g. .jpg or .rw2
+    // if ext == "" { ext = ".jpg" } // fix past mistake of not including extension
     fullPath := inPath + newName + ext
     _, err := os.Stat(fullPath)
     if os.IsNotExist(err) { // ideally this is a new file in case just do what we we're thinking
         return newName + ext
-    } else { // TODO this could cause an infinate loop in cases of +100 duplicates
-        psudoRand := strconv.Itoa(rand.Intn(99))
-        return getValidName(inPath, newName + "_" + psudoRand , ext)
+    } else { // TODO this could cause an infinite loop in cases of +100 duplicates
+        pseudoRand := strconv.Itoa(rand.Intn(99))
+        return getValidName(inPath, newName + "_" + pseudoRand , ext)
     }
 }
 
 func timeTakenIfPhoto(photoPath string)(time.Time, bool){
     file, err := os.Open(photoPath)
-    if err != nil {return time.Time{}, false}
+    if err != nil {
+        fmt.Println(err)
+        return time.Time{}, false
+    }
     exifData, err := exif.Decode(file)
-    if err != nil {return time.Time{}, false}
+    if err != nil {
+        fmt.Println(err)
+        return time.Time{}, false
+    }
     taken, err := exifData.DateTime()
-    if err != nil {return time.Time{}, false}
+    if err != nil {
+        fmt.Println(err)
+        return time.Time{}, false
+    }
     return taken, true
 }
 
